@@ -1,0 +1,212 @@
+create database  if not exists salesdatawalmart;
+
+create table if not exists sales(
+		inovice_id varchar(30) NOT null primary key ,
+        branch varchar(5) not null ,
+        city varchar(30) not null ,
+        customer_type varchar(30) not null,
+        gender varchar(10) not null,
+        proudct_line varchar(100) not null,
+        unit_price decimal(10,2) not null,
+	    quantity INT NOT NULL,
+		tax_pct FLOAT(6,4) NOT NULL,
+		total DECIMAL(12, 4) NOT NULL,
+		date DATETIME NOT NULL,
+		time TIME NOT NULL,
+		payment VARCHAR(15) NOT NULL,
+		cogs DECIMAL(10,2) NOT NULL,
+		gross_margin_pct FLOAT(11,9),
+		gross_income DECIMAL(12, 4),
+		rating FLOAT(2, 1)
+);
+
+
+
+-- -------------------------------------------------------------------------------------------------------------
+-- -------------------------------------feature engineering-----------------------------------------------------
+-- time_of_day
+
+select time,
+(case
+	when time between '00:00:00' and '12:00:00' then 'morning'
+	when time between '12:01:00' and '16:00:00' then 'afternoon'
+	when time between '16:01:00' and '23:59:00' then 'evening'
+end ) as time_of_day
+from sales;
+alter table sales add column time_of_day varchar(20);
+
+update sales
+set time_of_day = (case
+	when time between '00:00:00' and '12:00:00' then 'morning'
+	when time between '12:01:00' and '16:00:00' then 'afternoon'
+	when time between '16:01:00' and '23:59:00' then 'evening'
+end );
+select *
+from sales;
+
+        
+-- day_name----
+select date,
+dayname(date)
+from sales;
+
+alter table sales add column day_name varchar(20);
+
+update sales
+set day_name = dayname(date);
+
+select * 
+from sales;
+
+-- month_name -----
+
+select date,
+monthname(date)
+from sales;
+alter table sales add column month_name varchar(20);
+
+update sales
+set month_name = monthname(date);
+
+select * 
+from sales;
+-- ----------------------------------------------------------------
+-- ----------------------------------------------------------------
+-- how many unique cities doest the data have?(kaç tane benzersiz şehir var veride) ------------------------
+select 
+distinct city 
+from sales;
+
+-- in which city each branch (her şube hangi şehirde?) -----------------------------------------
+select 
+distinct city, branch
+from sales;
+
+-- -----------------------------------------------------------------------------------------------------------
+-- ------------------------------------- Product(ürün) ---------------------------------------------------------------
+-- how many unique product lines does the data have ? ( kaç tane benzersiz ürün hattı var verilerde )---------------------------------------------------
+select 
+count(distinct proudct_line)
+from sales;
+-- count (saysını veriyor)
+
+
+-- what is the most common payement method ? (en yaygın ödeme şekli nedir )
+select payment,
+count(payment)
+from sales
+group by payment;
+
+-- what is the most seeling product line ? (en çok satan ürün hatları hangisidir ? )
+select proudct_line,
+count(proudct_line) as prd
+from sales
+group by proudct_line
+order by prd desc;
+
+-- what is the total revenue by month ? (aylık toplam gelir nedir ?)
+select month_name,
+sum(total) as total_revenue
+from sales
+group by month_name 
+order by total_revenue desc;
+
+-- what month had the largest cogs ( hangi ay en büyük satış olmuştur)
+select month_name,
+sum(cogs) as cogs
+from sales 
+group by month_name
+order by cogs desc;
+
+
+-- what product line had the largest revenue (hangi ürün hattının geliri en yüksekti) ?
+select proudct_line,
+sum(total) as total_revenue
+from sales
+group by proudct_line
+order by total_revenue desc;
+
+-- what is the city with largest revenue (en büyük gelire sahip şehir hangisidir)?
+select city,
+sum(total) as total_revenue
+from sales 
+group by city 
+order by total_revenue desc;
+
+-- which branch sold more products than average product sold (hangi şube ortalama satılan üründen daha fazla ürün sattı) ?
+select branch,
+sum(quantity) as qty
+from sales 
+group by branch
+having sum(quantity) > (select avg(quantity));
+
+-- what is the most common product line by gender (cinsiyete göre en yaygın ürün yelpazesi nedir)?
+select gender,proudct_line,
+count(gender) as cnt
+from sales
+group by proudct_line,gender 
+order by cnt desc; 
+ 
+-- what is the average rating for each product line (her ürün grubu için ortalama puan nedir)?
+select proudct_line,
+avg(rating)as avg_rating  
+from sales
+group by proudct_line
+order by avg_rating desc;
+-- round eklersek avg ye yuvarlar en yakın değere 
+
+-- ----------------------------------------------------------------------------------------------------------
+-- --------------------------------- Sales ------------------------------------------------------------------
+
+-- number of sales made in each time of the day  per weekday (Hafta içi her günün her saatinde yapılan satış sayısı)?
+select
+time_of_day,
+count(*) as total_sales
+from sales 
+group by time_of_day 
+order by total_sales desc;
+
+-- which of customer type brings the most revenue (Hangi müşteri tipi en fazla geliri getiriyor)?
+select customer_type,
+sum(total) as total_bring
+from sales
+group by customer_type
+order by total_bring desc;
+
+
+-- which city has the largest tax percent / vat(value added tax) (Hangi şehrin en büyük vergi yüzdesi / KDV'si (katma değer vergisi) var)?
+select city,
+avg(tax_pct) as total_tax
+from sales
+group by city
+order by total_tax desc;
+
+-- which customer type pays the most in vat (en çok vergiyi hangi müşteri tipi ödüyor)
+
+select customer_type,
+avg(tax_pct) as tax
+from sales 
+group by customer_type
+order by tax desc;
+
+-- ----------------------------------------------------------------------------------------------------------
+-- --------------------------------------------- Customer ---------------------------------------------------
+
+-- how many unique customer type does the data have (kaç tane benzersiz müşteri tipi var veride)?
+select 
+distinct customer_type
+from sales;
+
+-- which customer type buys the most (Hangi müşteri tipi en çok satın alma yapıyor?)?
+select 
+customer_type,
+count(*) as cstm_cnt
+from sales 
+group by customer_type;
+
+-- what is the gender of most of the customers (Müşterilerin çoğunun cinsiyeti nedir?)
+select 
+gender,
+count(customer_type)
+from sales
+group by gender;
